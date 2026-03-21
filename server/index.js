@@ -25,6 +25,16 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
+try {
+  const productsCount = db.prepare('SELECT COUNT(*) AS total FROM productos').get()?.total || 0;
+  if (productsCount === 0) {
+    console.log('Base vacia detectada. Cargando menu inicial de Modo Sabor...');
+    require('./scripts/seedMenuModoSabor');
+  }
+} catch (error) {
+  console.error('No se pudo cargar el menu inicial automaticamente:', error.message);
+}
+
 app.set('io', io);
 
 app.use('/api/auth', require('./routes/auth'));
