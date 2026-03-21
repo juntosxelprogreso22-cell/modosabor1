@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Pencil, Trash2, X, Bike, Phone, MapPin, CheckCircle, UserCheck, RefreshCw, Navigation, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { SOCKET_URL, UPLOADS_BASE_URL } from '../lib/runtime.js';
 
 const fmt = n => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -13,7 +14,7 @@ function assetUrl(path, config = {}) {
   const raw = String(path || '').trim();
   if (!raw) return '';
   if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:')) return raw;
-  const base = String(config?.public_api_url || 'http://localhost:3001').replace(/\/$/, '');
+  const base = String(config?.public_api_url || UPLOADS_BASE_URL || '').replace(/\/$/, '');
   return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
 }
 
@@ -75,7 +76,7 @@ export default function Delivery() {
     }).catch(() => {});
 
     cargar();
-    const socket = io('http://localhost:3001');
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socket.on('nuevo_pedido', () => cargar());
     socket.on('pedido_actualizado', () => cargar());
     socket.on('repartidor_ubicacion', (rep) => {

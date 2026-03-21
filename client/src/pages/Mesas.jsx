@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import api from '../lib/api.js';
+import { SOCKET_URL } from '../lib/runtime.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   Armchair,
@@ -142,7 +143,7 @@ export default function Mesas() {
 
   useEffect(() => {
     cargar();
-    const socket = io('http://localhost:3001');
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socket.on('nuevo_pedido', () => cargar());
     socket.on('pedido_actualizado', () => cargar());
     return () => socket.disconnect();

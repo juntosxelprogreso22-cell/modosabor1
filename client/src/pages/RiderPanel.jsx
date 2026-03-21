@@ -12,14 +12,11 @@ import {
   Phone,
   Store,
 } from 'lucide-react';
-
-const SOCKET_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'
-  : undefined;
+import { API_BASE_URL, SOCKET_URL } from '../lib/runtime.js';
 
 async function publicJson(path, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),

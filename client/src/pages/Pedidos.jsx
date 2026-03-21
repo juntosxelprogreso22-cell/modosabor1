@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { Bike, Store, Armchair, X, RefreshCw, ChevronRight, Printer, History, RotateCcw, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { SOCKET_URL } from '../lib/runtime.js';
 
 const COLS = [
   { estado: 'nuevo', label: 'Nuevos', dot: 'bg-blue-500', header: 'bg-blue-50 border-blue-200' },
@@ -237,7 +238,7 @@ export default function Pedidos() {
     }).catch(() => {});
 
     cargar();
-    const socket = io('http://localhost:3001');
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socket.on('nuevo_pedido', (p) => {
       const remoteOrder = p.origen === 'web' || p.origen === 'whatsapp';
       setPedidos((prev) => [p, ...prev]);

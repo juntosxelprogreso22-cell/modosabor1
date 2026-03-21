@@ -5,10 +5,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CheckCheck, MessageCircle, RefreshCw, Search, Send } from 'lucide-react';
 import api from '../lib/api.js';
-
-const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'
-  : undefined;
+import { SOCKET_URL } from '../lib/runtime.js';
 
 function classForDirection(direction) {
   return direction === 'out'
@@ -64,7 +61,7 @@ export default function WhatsAppInbox() {
   }, [selectedId]);
 
   useEffect(() => {
-    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socket.on('whatsapp_conversation_updated', () => {
       loadConversations();
       if (selectedId) {

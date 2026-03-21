@@ -6,10 +6,7 @@ import { es } from 'date-fns/locale';
 import { CheckCircle2, ChefHat, Clock3, Maximize, Minimize, PackageCheck, RefreshCw, UtensilsCrossed, Volume2, VolumeX } from 'lucide-react';
 import api from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const SOCKET_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'
-  : undefined;
+import { SOCKET_URL } from '../lib/runtime.js';
 
 const COLS = [
   { estado: 'confirmado', label: 'Por arrancar', tone: 'border-blue-200 bg-blue-50', icon: Clock3 },
@@ -183,7 +180,7 @@ export default function KDS() {
 
     cargar();
     const timer = setInterval(() => forceTick((n) => n + 1), 30000);
-    const socket = io(SOCKET_URL || 'http://localhost:3001', { transports: ['websocket', 'polling'] });
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socket.on('nuevo_pedido', (pedido) => {
       if (['confirmado', 'preparando', 'listo'].includes(pedido.estado)) {
         setPedidos((prev) => [pedido, ...prev.filter((item) => item.id !== pedido.id)]);

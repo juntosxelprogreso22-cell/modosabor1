@@ -19,10 +19,7 @@ import {
   Store,
   XCircle,
 } from 'lucide-react';
-
-const SOCKET_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'
-  : undefined;
+import { SOCKET_URL } from '../lib/runtime.js';
 
 const ESTADOS = [
   { key: 'nuevo', label: 'Recibido', hint: 'Lo acabamos de tomar', icon: CircleDashed },
