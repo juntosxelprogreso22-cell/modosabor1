@@ -10,9 +10,10 @@ const {
 } = require('../utils/whatsappBot');
 const { getConfigMap } = require('../utils/mercadoPago');
 const { sendWhatsAppText, logWhatsappDelivery, normalizeWhatsAppPhone } = require('../utils/whatsapp');
+const { mergeRuntimeConfig } = require('../utils/runtimeConfig');
 
 function getConfigValue(key) {
-  return db.prepare('SELECT valor FROM configuracion WHERE clave = ?').get(key)?.valor || '';
+  return mergeRuntimeConfig(getConfigMap(db))[key] || '';
 }
 
 router.get('/webhook', (req, res) => {
@@ -69,7 +70,7 @@ router.post('/conversaciones/:id/responder', auth, requirePermission('config.man
     return res.status(400).json({ error: 'Escribi un mensaje para responder' });
   }
 
-  const config = getConfigMap(db);
+  const config = mergeRuntimeConfig(getConfigMap(db));
   try {
     await sendWhatsAppText({
       config,

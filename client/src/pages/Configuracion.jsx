@@ -802,8 +802,8 @@ export default function Configuracion() {
             </div>
           </div>
 
-          {config.whatsapp_modo_envio === 'api' ? (
-            <div className="space-y-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4">
+          <div className="space-y-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4">
+            {config.whatsapp_modo_envio === 'api' ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-gray-600">Version API</label>
@@ -822,46 +822,80 @@ export default function Configuracion() {
                   <input {...f('whatsapp_test_destino')} placeholder="5491112345678" />
                 </div>
               </div>
-
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Diagnostico WhatsApp API</p>
-                  <p className="mt-1 text-xs text-gray-500">Valida token y Phone Number ID antes de activar el envio real.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={probarWhatsApp}
-                    disabled={testingWa}
-                    className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    {testingWa ? 'Probando...' : 'Probar WhatsApp'}
-                  </button>
-                  <button
-                    onClick={enviarPruebaWhatsApp}
-                    disabled={sendingWaTest}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
-                  >
-                    {sendingWaTest ? 'Enviando...' : 'Enviar prueba'}
-                  </button>
-                </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                El modo actual es <strong>manual</strong>. Asi el sistema no puede responder mensajes entrantes por bot o IA.
+                Para respuestas automaticas tenes que pasar a <strong>API oficial</strong> y cargar token + Phone Number ID.
               </div>
+            )}
 
-              {waStatus ? (
-                <div className="space-y-3">
-                  <div className={`rounded-xl px-3 py-3 text-sm font-semibold ${waStatus.ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {waStatus.message}
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Diagnostico WhatsApp</p>
+                <p className="mt-1 text-xs text-gray-500">Te dice si el bot realmente puede responder y si la IA tiene lo minimo para entrar en juego.</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={probarWhatsApp}
+                  disabled={testingWa}
+                  className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {testingWa ? 'Probando...' : 'Probar WhatsApp'}
+                </button>
+                <button
+                  onClick={enviarPruebaWhatsApp}
+                  disabled={sendingWaTest || config.whatsapp_modo_envio !== 'api'}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {sendingWaTest ? 'Enviando...' : 'Enviar prueba'}
+                </button>
+              </div>
+            </div>
+
+            {waStatus ? (
+              <div className="space-y-3">
+                <div className={`rounded-xl px-3 py-3 text-sm font-semibold ${waStatus.bot_ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {waStatus.message}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`rounded-xl px-3 py-2 font-semibold ${waStatus.bot_enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                    bot_enabled: {waStatus.bot_enabled ? 'OK' : 'Off'}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {Object.entries(waStatus.checks || {}).map(([key, ok]) => (
-                      <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                        {key}: {ok ? 'OK' : 'Falta'}
-                      </div>
-                    ))}
+                  <div className={`rounded-xl px-3 py-2 font-semibold ${waStatus.bot_ready ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                    bot_ready: {waStatus.bot_ready ? 'OK' : 'Bloqueado'}
+                  </div>
+                  <div className={`rounded-xl px-3 py-2 font-semibold ${waStatus.ai_enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                    ai_enabled: {waStatus.ai_enabled ? 'OK' : 'Off'}
+                  </div>
+                  <div className={`rounded-xl px-3 py-2 font-semibold ${waStatus.ai_ready ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    ai_ready: {waStatus.ai_ready ? 'OK' : 'Pendiente'}
                   </div>
                 </div>
-              ) : null}
-            </div>
-          ) : null}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {Object.entries(waStatus.checks || {}).map(([key, ok]) => (
+                    <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                      {key}: {ok ? 'OK' : 'Falta'}
+                    </div>
+                  ))}
+                  {Object.entries(waStatus.ai_checks || {}).map(([key, ok]) => (
+                    <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {key}: {ok ? 'OK' : 'Falta'}
+                    </div>
+                  ))}
+                </div>
+                {waStatus.blocking_reason ? (
+                  <div className="rounded-xl bg-white px-3 py-3 text-xs text-gray-600">
+                    <strong>Bloqueo:</strong> {waStatus.blocking_reason}
+                  </div>
+                ) : null}
+                {waStatus.webhook_url ? (
+                  <div className="rounded-xl bg-white px-3 py-3 text-xs text-gray-600 break-all">
+                    <strong>Webhook:</strong> {waStatus.webhook_url}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
           {waConversations.length > 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">

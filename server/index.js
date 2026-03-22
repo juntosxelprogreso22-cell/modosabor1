@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const db = require('./db');
 const { startAutomaticBackups } = require('./utils/backupManager');
+const { getConfigMap } = require('./utils/mercadoPago');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,12 +52,7 @@ app.use('/api/whatsapp', require('./routes/whatsapp'));
 
 app.get('/api/health', (_req, res) => {
   try {
-    const configRows = db.prepare(`
-      SELECT clave, valor
-      FROM configuracion
-      WHERE clave IN ('public_app_url', 'public_api_url', 'mercadopago_token', 'whatsapp_api_token', 'whatsapp_phone_number_id')
-    `).all();
-    const config = Object.fromEntries(configRows.map((row) => [row.clave, row.valor || '']));
+    const config = getConfigMap(db);
     const dbCheck = db.prepare('SELECT 1 AS ok').get();
 
     res.json({

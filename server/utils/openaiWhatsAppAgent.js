@@ -17,6 +17,7 @@ const {
   summarizeDraft,
 } = require('./orderDrafts');
 const { normalizeWhatsAppPhone } = require('./whatsapp');
+const { mergeRuntimeConfig } = require('./runtimeConfig');
 
 function compactText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
@@ -136,7 +137,7 @@ function toolResult(value) {
 }
 
 async function executeTool({ db, conversation, toolName, args, onPedidoCreated }) {
-  const config = getConfigMap(db);
+  const config = mergeRuntimeConfig(getConfigMap(db));
   const draft = getOrCreateDraft(db, {
     conversationId: conversation.id,
     telefono: conversation.telefono,
@@ -297,7 +298,7 @@ async function executeTool({ db, conversation, toolName, args, onPedidoCreated }
 }
 
 async function runOpenAIWhatsAppAgent({ db, conversation, incomingText, onPedidoCreated }) {
-  const config = getConfigMap(db);
+  const config = mergeRuntimeConfig(getConfigMap(db));
   if (config.whatsapp_ai_activa !== '1' || !config.openai_api_key) {
     return null;
   }

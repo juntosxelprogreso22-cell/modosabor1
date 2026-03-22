@@ -10,6 +10,7 @@ const { requirePermission } = require('../utils/permissions');
 const { quoteDelivery, serializeZones } = require('../utils/deliveryZones');
 const { buildPrintTestDocument } = require('../utils/printTemplates');
 const { getCurrentShiftInfo } = require('../utils/shifts');
+const { mergeRuntimeConfig } = require('../utils/runtimeConfig');
 const {
   listBackups,
   createDatabaseBackup,
@@ -40,7 +41,7 @@ function rowsToConfig(rows) {
 
 function getFullConfig() {
   const rows = db.prepare('SELECT * FROM configuracion').all();
-  const config = rowsToConfig(rows);
+  const config = mergeRuntimeConfig(rowsToConfig(rows));
   return {
     ...config,
     ...getCurrentShiftInfo(config),
@@ -151,16 +152,44 @@ router.get('/mercadopago/eventos', auth, requirePermission('config.manage'), (re
 router.get('/whatsapp/status', auth, requirePermission('config.manage'), async (req, res) => {
   const config = getFullConfig();
   const status = getWhatsAppStatus(config);
+  const botEnabled = config.whatsapp_bot_activo === '1';
+  const aiEnabled = config.whatsapp_ai_activa === '1';
+  const aiKeyPresent = Boolean(String(config.openai_api_key || '').trim());
+  const botReady = botEnabled && status.ready;
+  const aiReady = botReady && aiEnabled && aiKeyPresent;
 
+  let blockingReason = '';
   let message = 'WhatsApp en modo manual';
-  if (status.mode === 'api') {
-    message = status.ready
-      ? 'WhatsApp API listo para enviar'
-      : 'Faltan credenciales para usar WhatsApp API';
+
+  if (!botEnabled) {
+    blockingReason = 'bot_disabled';
+    message = 'El bot de WhatsApp esta desactivado.';
+  } else if (status.mode !== 'api') {
+    blockingReason = 'manual_mode';
+    message = 'WhatsApp esta en modo manual. Asi no puede responder mensajes entrantes automaticamente.';
+  } else if (!status.checks.token || !status.checks.phone_number_id) {
+    blockingReason = 'missing_api_credentials';
+    message = 'Faltan credenciales para usar WhatsApp API.';
+  } else if (aiEnabled && !aiKeyPresent) {
+    blockingReason = 'missing_openai_key';
+    message = 'WhatsApp API esta listo, pero la IA no puede responder porque falta la clave de OpenAI.';
+  } else if (aiEnabled) {
+    message = 'WhatsApp API esta listo y la IA quedo habilitada para responder.';
+  } else {
+    message = 'WhatsApp API esta listo. El bot basico puede responder.';
   }
 
   res.json({
     ...status,
+    bot_enabled: botEnabled,
+    bot_ready: botReady,
+    ai_enabled: aiEnabled,
+    ai_ready: aiReady,
+    ai_checks: {
+      openai_key: aiKeyPresent,
+    },
+    blocking_reason: blockingReason,
+    webhook_url: `${String(config.public_api_url || '').replace(/\/$/, '')}/api/whatsapp/webhook`,
     message,
   });
 });

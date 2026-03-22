@@ -1,9 +1,12 @@
+const { mergeRuntimeConfig } = require('./runtimeConfig');
+
 function getConfigMap(db) {
   const rows = db.prepare('SELECT clave, valor FROM configuracion').all();
-  return rows.reduce((acc, row) => {
+  const config = rows.reduce((acc, row) => {
     acc[row.clave] = row.valor;
     return acc;
   }, {});
+  return mergeRuntimeConfig(config);
 }
 
 async function mpRequest(path, token, options = {}) {

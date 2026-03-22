@@ -6,6 +6,7 @@ const {
   logWhatsappDelivery,
 } = require('./whatsapp');
 const { runOpenAIWhatsAppAgent } = require('./openaiWhatsAppAgent');
+const { mergeRuntimeConfig } = require('./runtimeConfig');
 
 function money(value) {
   return `$${Number(value || 0).toLocaleString('es-AR')}`;
@@ -175,7 +176,7 @@ function buildTrackingReply(config, pedido) {
 }
 
 function buildBotReply(db, conversation, incomingText, contactName = '') {
-  const config = getConfigMap(db);
+  const config = mergeRuntimeConfig(getConfigMap(db));
   const text = normalizeText(incomingText);
   const templateData = {
     cliente: contactName || conversation.nombre || 'cliente',
@@ -339,14 +340,9 @@ function buildBotReply(db, conversation, incomingText, contactName = '') {
 }
 
 async function handleIncomingWhatsAppMessages(db, io, payload) {
-  const config = getConfigMap(db);
+  const config = mergeRuntimeConfig(getConfigMap(db));
   const status = getWhatsAppStatus(config);
-  if (config.whatsapp_bot_activo !== '1') {
-    return { processed: 0, ignored: true, reason: 'bot_inactivo' };
-  }
-  if (!status.ready) {
-    return { processed: 0, ignored: true, reason: 'whatsapp_api_no_lista' };
-  }
+  const botEnabled = config.whatsapp_bot_activo === '1';
 
   const entries = Array.isArray(payload?.entry) ? payload.entry : [];
   let processed = 0;
@@ -368,6 +364,29 @@ async function handleIncomingWhatsAppMessages(db, io, payload) {
           incoming.raw,
           incoming.raw?.type || 'text'
         );
+
+        if (!botEnabled || !status.ready) {
+          const updatedConversation = markConversation(db, conversation.id, {
+            ultimo_estado: !botEnabled ? 'bot_inactivo' : 'pendiente_configuracion',
+            ultimo_contexto: !botEnabled ? 'bot_disabled' : 'whatsapp_api_no_lista',
+            escalado_humano: 1,
+            setRespuesta: false,
+          });
+
+          if (io && updatedConversation) {
+            io.emit('whatsapp_conversation_updated', {
+              id: updatedConversation.id,
+              telefono: updatedConversation.telefono,
+              nombre: updatedConversation.nombre,
+              ultimo_estado: updatedConversation.ultimo_estado,
+              escalado_humano: updatedConversation.escalado_humano,
+              actualizado_en: updatedConversation.actualizado_en,
+            });
+          }
+
+          processed += 1;
+          continue;
+        }
 
         let botReply = null;
         try {
@@ -438,7 +457,11 @@ async function handleIncomingWhatsAppMessages(db, io, payload) {
     }
   }
 
-  return { processed, ignored: false };
+  return {
+    processed,
+    ignored: false,
+    auto_reply_enabled: botEnabled && status.ready,
+  };
 }
 
 module.exports = {
