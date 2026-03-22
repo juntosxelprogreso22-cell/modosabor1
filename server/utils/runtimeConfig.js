@@ -10,6 +10,21 @@ function isLocalUrl(value) {
   return /localhost|127\.0\.0\.1/i.test(clean(value));
 }
 
+function isHttpsUrl(value) {
+  const raw = clean(value);
+  if (!raw) return false;
+
+  try {
+    return new URL(raw).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isPublicHttpsUrl(value) {
+  return isHttpsUrl(value) && !isLocalUrl(value);
+}
+
 function deriveFrontendUrlFromApi(apiUrl) {
   const raw = cleanUrl(apiUrl);
   if (!raw) return '';
@@ -118,5 +133,10 @@ function mergeRuntimeConfig(config = {}) {
 }
 
 module.exports = {
+  clean,
+  cleanUrl,
+  isLocalUrl,
+  isHttpsUrl,
+  isPublicHttpsUrl,
   mergeRuntimeConfig,
 };

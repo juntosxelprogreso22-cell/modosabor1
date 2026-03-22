@@ -61,6 +61,25 @@ modo-sabor-bot
 6. Mandar un mensaje real al numero del negocio.
 7. Verificar que aparezca en Inbox y que el bot responda.
 
+## Si aparece el error 131030
+
+Si al usar `Enviar prueba` aparece:
+
+```text
+(#131030) Recipient phone number not in allowed list
+```
+
+no significa que el backend este mal. Significa que Meta todavia esta tomando ese envio como prueba y solo deja mandar mensajes a numeros agregados manualmente en la lista permitida.
+
+Para destrabarlo:
+
+1. Entrar a Meta Developers -> WhatsApp -> API Setup.
+2. Buscar la seccion de destinatarios de prueba (`To`).
+3. Agregar y verificar el numero al que queres enviar la prueba.
+4. Repetir `Enviar prueba` desde el panel.
+
+Si `Probar WhatsApp` da todo `OK` pero `Enviar prueba` falla con `131030`, el problema casi seguro esta en esa lista permitida de Meta y no en Render.
+
 ## Nota importante
 
 Si `WHATSAPP_MODO_ENVIO=manual`, el bot no puede responder mensajes entrantes automaticamente.

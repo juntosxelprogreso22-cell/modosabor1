@@ -448,6 +448,17 @@ En cada sesion vamos a manejar esto asi:
 4. probarlo
 5. actualizar este documento
 
+## Bitacora de continuidad
+
+- 2026-03-21:
+  - se dejo documentado el avance de Render y WhatsApp en `ESTADO-RENDER-WHATSAPP-2026-03-21.md`
+- 2026-03-22:
+  - se reviso de nuevo el proyecto completo
+  - se confirmo que el error `131030` al enviar prueba de WhatsApp apunta a la lista permitida de Meta y no al backend
+  - se detecto que el puerto local `3001` esta siendo usado por otro proceso Node ajeno a este repo, asi que las pruebas locales pueden confundirse
+  - se mejoro el diagnostico de WhatsApp en backend y frontend para mostrar checks de produccion, destino de prueba y pasos concretos cuando Meta bloquea el envio
+  - se dejo el estado actualizado en `ESTADO-ACTUAL-2026-03-22.md`
+
 ## Proximo paso sugerido
 
 Seguir con:

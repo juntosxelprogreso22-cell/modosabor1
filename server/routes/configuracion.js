@@ -10,7 +10,7 @@ const { requirePermission } = require('../utils/permissions');
 const { quoteDelivery, serializeZones } = require('../utils/deliveryZones');
 const { buildPrintTestDocument } = require('../utils/printTemplates');
 const { getCurrentShiftInfo } = require('../utils/shifts');
-const { mergeRuntimeConfig } = require('../utils/runtimeConfig');
+const { mergeRuntimeConfig, isHttpsUrl, isPublicHttpsUrl } = require('../utils/runtimeConfig');
 const {
   listBackups,
   createDatabaseBackup,
@@ -54,6 +54,43 @@ function getPublicConfig() {
     delete config[key];
   });
   return config;
+}
+
+function buildWhatsAppNextSteps({ config, status, botEnabled, aiEnabled, aiKeyPresent, testDestination }) {
+  const steps = [];
+  const webhookUrl = `${String(config.public_api_url || '').replace(/\/$/, '')}/api/whatsapp/webhook`;
+
+  if (!botEnabled) {
+    steps.push('Activar "Bot de WhatsApp activo" para permitir respuestas automaticas.');
+  }
+  if (status.mode !== 'api') {
+    steps.push('Cambiar WhatsApp a modo API oficial para responder mensajes entrantes.');
+  }
+  if (!status.checks.token) {
+    steps.push('Cargar WHATSAPP_API_TOKEN en Render o en la configuracion del sistema.');
+  }
+  if (!status.checks.phone_number_id) {
+    steps.push('Cargar el Phone Number ID de Meta para habilitar el envio por API.');
+  }
+  if (!isPublicHttpsUrl(config.public_api_url || '')) {
+    steps.push('Definir PUBLIC_API_URL con HTTPS publico para que Meta pueda llegar al webhook.');
+  }
+  if (!isHttpsUrl(config.public_app_url || '')) {
+    steps.push('Definir PUBLIC_APP_URL con HTTPS para seguimiento y links publicos.');
+  }
+  if (aiEnabled && !aiKeyPresent) {
+    steps.push('Cargar OPENAI_API_KEY para habilitar la IA conversacional.');
+  }
+  if (!testDestination) {
+    steps.push('Completar un telefono de prueba para validar el envio desde el panel.');
+  } else if (status.mode === 'api' && status.checks.token && status.checks.phone_number_id) {
+    steps.push(`Si Meta rechaza la prueba, agregar ${testDestination} en Meta Developers -> WhatsApp -> API Setup -> To.`);
+  }
+  if (isPublicHttpsUrl(config.public_api_url || '') && status.mode === 'api') {
+    steps.push(`Configurar el webhook de Meta con esta URL: ${webhookUrl}`);
+  }
+
+  return Array.from(new Set(steps));
 }
 
 router.get('/', (req, res) => {
@@ -157,6 +194,10 @@ router.get('/whatsapp/status', auth, requirePermission('config.manage'), async (
   const aiKeyPresent = Boolean(String(config.openai_api_key || '').trim());
   const botReady = botEnabled && status.ready;
   const aiReady = botReady && aiEnabled && aiKeyPresent;
+  const appUrl = String(config.public_app_url || '').trim();
+  const apiUrl = String(config.public_api_url || '').trim();
+  const webhookUrl = apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/whatsapp/webhook` : '';
+  const testTarget = normalizeWhatsAppPhone(config.whatsapp_test_destino || config.whatsapp_numero);
 
   let blockingReason = '';
   let message = 'WhatsApp en modo manual';
@@ -188,8 +229,26 @@ router.get('/whatsapp/status', auth, requirePermission('config.manage'), async (
     ai_checks: {
       openai_key: aiKeyPresent,
     },
+    production_checks: {
+      public_app_url: isHttpsUrl(appUrl),
+      public_api_url: isHttpsUrl(apiUrl),
+      webhook_public: isPublicHttpsUrl(apiUrl),
+      test_destination: Boolean(testTarget),
+    },
     blocking_reason: blockingReason,
-    webhook_url: `${String(config.public_api_url || '').replace(/\/$/, '')}/api/whatsapp/webhook`,
+    test_target: testTarget,
+    webhook_url: webhookUrl,
+    meta_trial_notice: testTarget
+      ? 'Mientras Meta siga en modo de prueba, solo podras enviar mensajes a numeros agregados en API Setup -> To.'
+      : 'Defini un telefono de prueba para validar el envio desde el panel.',
+    next_steps: buildWhatsAppNextSteps({
+      config,
+      status,
+      botEnabled,
+      aiEnabled,
+      aiKeyPresent,
+      testDestination: testTarget,
+    }),
     message,
   });
 });
@@ -295,9 +354,31 @@ router.post('/whatsapp/test', auth, requirePermission('config.manage'), async (r
       to: telefono,
       result,
       message: 'Mensaje de prueba enviado',
+      next_steps: [
+        'Revisa si el mensaje llego al telefono configurado.',
+        'Despues envia un mensaje real al numero del negocio para validar webhook, inbox y respuesta del bot.',
+      ],
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'No se pudo enviar el mensaje de prueba' });
+    const code = Number(error.code || 0) || null;
+    const isAllowedListError = code === 131030;
+
+    return res.status(isAllowedListError ? 409 : 500).json({
+      error: error.message || 'No se pudo enviar el mensaje de prueba',
+      code,
+      hint: error.hint || '',
+      to: telefono,
+      next_steps: isAllowedListError
+        ? [
+            `Agregar ${telefono} en Meta Developers -> WhatsApp -> API Setup -> To.`,
+            'Verificar ese numero dentro de Meta.',
+            'Repetir el boton "Enviar prueba" desde el panel.',
+          ]
+        : [
+            'Revisar token, Phone Number ID y modo API.',
+            'Volver a ejecutar "Probar WhatsApp" para ver los checks.',
+          ],
+    });
   }
 });
 

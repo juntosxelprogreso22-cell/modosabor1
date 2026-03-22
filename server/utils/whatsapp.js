@@ -38,6 +38,33 @@ function buildMetaMessagesUrl({ apiVersion, phoneNumberId }) {
   return `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 }
 
+function buildWhatsAppApiError(data = {}) {
+  const error = data?.error || {};
+  const code = Number(error.code || data?.code || 0);
+  const type = error.type || data?.type || '';
+  const fbtraceId = error.fbtrace_id || data?.fbtrace_id || '';
+  const hint = code === 131030
+    ? 'Agrega y verifica el numero destino en Meta Developers > WhatsApp > API Setup > To antes de repetir la prueba.'
+    : '';
+
+  const message =
+    code === 131030
+      ? 'Meta rechazo el destino: el numero no esta en la lista permitida de pruebas. Agregalo en WhatsApp Cloud API > API Setup > To y volve a intentar.'
+      :
+    error.message ||
+    data?.message ||
+    'No se pudo enviar el mensaje por WhatsApp API';
+
+  const finalMessage = code ? `${message} (code ${code})` : message;
+  const builtError = new Error(finalMessage);
+  builtError.code = code || null;
+  builtError.type = type;
+  builtError.fbtrace_id = fbtraceId;
+  builtError.hint = hint;
+  builtError.details = data;
+  return builtError;
+}
+
 async function sendWhatsAppText({ config, to, body }) {
   const waConfig = getWhatsAppConfig(config);
   if (waConfig.mode !== 'api') {
@@ -72,11 +99,7 @@ async function sendWhatsAppText({ config, to, body }) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      data?.error?.message ||
-      data?.message ||
-      'No se pudo enviar el mensaje por WhatsApp API';
-    throw new Error(message);
+    throw buildWhatsAppApiError(data);
   }
 
   return data;
@@ -115,6 +138,7 @@ module.exports = {
   normalizeWhatsAppPhone,
   getWhatsAppConfig,
   getWhatsAppStatus,
+  buildWhatsAppApiError,
   sendWhatsAppText,
   logWhatsappDelivery,
 };

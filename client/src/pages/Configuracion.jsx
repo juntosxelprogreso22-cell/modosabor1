@@ -25,6 +25,19 @@ function parseTurnos(value) {
   }
 }
 
+function labelWhatsAppCheck(key) {
+  const labels = {
+    token: 'token',
+    phone_number_id: 'phone_number_id',
+    openai_key: 'openai_key',
+    public_app_url: 'public_app_url',
+    public_api_url: 'public_api_url',
+    webhook_public: 'webhook_public',
+    test_destination: 'test_destination',
+  };
+  return labels[key] || key;
+}
+
 export default function Configuracion() {
   const [config, setConfig] = useState({});
   const [logo, setLogo] = useState(null);
@@ -40,6 +53,7 @@ export default function Configuracion() {
   const [waStatus, setWaStatus] = useState(null);
   const [testingWa, setTestingWa] = useState(false);
   const [sendingWaTest, setSendingWaTest] = useState(false);
+  const [waTestResult, setWaTestResult] = useState(null);
   const [waConversations, setWaConversations] = useState([]);
   const [printingTest, setPrintingTest] = useState(false);
   const [turnos, setTurnos] = useState([]);
@@ -211,13 +225,16 @@ export default function Configuracion() {
 
   const enviarPruebaWhatsApp = async () => {
     setSendingWaTest(true);
+    setWaTestResult(null);
     try {
       const result = await api.post('/configuracion/whatsapp/test', {
         telefono: config.whatsapp_test_destino || '',
       });
+      setWaTestResult(result);
       toast.success(result.message || 'Mensaje enviado');
     } catch (error) {
-      toast.error(error?.error || 'No se pudo enviar la prueba');
+      setWaTestResult({ ok: false, ...(error || {}) });
+      toast.error(error?.code === 131030 ? 'Meta bloqueo el numero de prueba' : (error?.error || 'No se pudo enviar la prueba'));
     } finally {
       setSendingWaTest(false);
     }
@@ -820,6 +837,9 @@ export default function Configuracion() {
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-xs font-semibold text-gray-600">Telefono prueba</label>
                   <input {...f('whatsapp_test_destino')} placeholder="5491112345678" />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Mientras la app de Meta siga en modo prueba, este numero tiene que estar agregado y verificado en <strong>API Setup -&gt; To</strong>.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -874,12 +894,17 @@ export default function Configuracion() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {Object.entries(waStatus.checks || {}).map(([key, ok]) => (
                     <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                      {key}: {ok ? 'OK' : 'Falta'}
+                      {labelWhatsAppCheck(key)}: {ok ? 'OK' : 'Falta'}
                     </div>
                   ))}
                   {Object.entries(waStatus.ai_checks || {}).map(([key, ok]) => (
                     <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                      {key}: {ok ? 'OK' : 'Falta'}
+                      {labelWhatsAppCheck(key)}: {ok ? 'OK' : 'Falta'}
+                    </div>
+                  ))}
+                  {Object.entries(waStatus.production_checks || {}).map(([key, ok]) => (
+                    <div key={key} className={`rounded-xl px-3 py-2 font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {labelWhatsAppCheck(key)}: {ok ? 'OK' : 'Revisar'}
                     </div>
                   ))}
                 </div>
@@ -888,10 +913,63 @@ export default function Configuracion() {
                     <strong>Bloqueo:</strong> {waStatus.blocking_reason}
                   </div>
                 ) : null}
+                {waStatus.test_target ? (
+                  <div className="rounded-xl bg-white px-3 py-3 text-xs text-gray-600">
+                    <strong>Destino de prueba:</strong> {waStatus.test_target}
+                  </div>
+                ) : null}
                 {waStatus.webhook_url ? (
                   <div className="rounded-xl bg-white px-3 py-3 text-xs text-gray-600 break-all">
                     <strong>Webhook:</strong> {waStatus.webhook_url}
                   </div>
+                ) : null}
+                {waStatus.meta_trial_notice ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                    {waStatus.meta_trial_notice}
+                  </div>
+                ) : null}
+                {waStatus.next_steps?.length ? (
+                  <div className="rounded-xl bg-white px-3 py-3 text-xs text-gray-600">
+                    <p className="font-semibold text-gray-800">Siguiente chequeo recomendado</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      {waStatus.next_steps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {waTestResult ? (
+              <div className={`rounded-2xl border px-4 py-4 ${waTestResult.ok ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+                <p className={`text-sm font-semibold ${waTestResult.ok ? 'text-emerald-800' : 'text-rose-800'}`}>
+                  {waTestResult.ok ? 'Resultado del ultimo envio de prueba' : 'La prueba no pudo enviarse'}
+                </p>
+                <p className={`mt-2 text-sm ${waTestResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {waTestResult.message || waTestResult.error}
+                </p>
+                {waTestResult.code ? (
+                  <p className={`mt-2 text-xs ${waTestResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    Codigo: {waTestResult.code}
+                  </p>
+                ) : null}
+                {waTestResult.to ? (
+                  <p className={`mt-2 text-xs ${waTestResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    Destino: {waTestResult.to}
+                  </p>
+                ) : null}
+                {waTestResult.hint ? (
+                  <p className={`mt-2 text-xs ${waTestResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {waTestResult.hint}
+                  </p>
+                ) : null}
+                {waTestResult.next_steps?.length ? (
+                  <ul className={`mt-3 list-disc space-y-1 pl-5 text-xs ${waTestResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {waTestResult.next_steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ul>
                 ) : null}
               </div>
             ) : null}

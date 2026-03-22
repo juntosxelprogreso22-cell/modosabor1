@@ -22,8 +22,10 @@
 - [ ] Cargar `whatsapp_api_token`
 - [ ] Cargar `whatsapp_phone_number_id`
 - [ ] Cargar `whatsapp_webhook_verify_token`
+- [ ] Cargar `whatsapp_test_destino`
 - [ ] Configurar webhook en Meta hacia `/api/whatsapp/webhook`
 - [ ] Enviar mensaje de prueba desde configuracion
+- [ ] Si Meta devuelve `131030`, agregar el numero en `API Setup -> To`
 - [ ] Confirmar recepcion de mensaje entrante
 - [ ] Confirmar respuesta automatica del agente
 - [ ] Confirmar derivacion a inbox humano
